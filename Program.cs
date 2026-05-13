@@ -10,7 +10,7 @@ internal class Program
     static List<Quote> quotes = [];
     static Settings settings;
     public record struct Quote(long id, string nick, ulong userId, string channel, ulong channelId, ulong server, string text, ulong messageId, long unixTime, DateTime dateTime);
-    public record struct Settings(string reactName, string prefix);
+    public record struct Settings(string reactName = "joy", string prefix = "&");
 
     public static void UpdateSettings(Settings newSettings) => UpdateSettings(newSettings.reactName, newSettings.prefix);
 
