@@ -1,11 +1,10 @@
 using System.Text;
-using DSharpPlus.CommandsNext;
-using DSharpPlus.CommandsNext.Attributes;
+using DSharpPlus.Commands;
 using DSharpPlus.Entities;
 
 namespace Aeoquotes;
 
-public class QuoteCommands : BaseCommandModule
+public class QuoteCommands
 {
     #region Command Tasks
     // [Command("help")]
@@ -22,28 +21,24 @@ public class QuoteCommands : BaseCommandModule
     // }
 
     [Command("q")]
-    public async Task Q(CommandContext ctx, [RemainingText] string args)
+    public async Task Q(CommandContext ctx, params string[] args)
     {
         Console.WriteLine("q invoked");
         await Quote(ctx, args);
     }
 
     [Command("quote")]
-    public async Task Quote(CommandContext ctx, [RemainingText] string args)
+    public async Task Quote(CommandContext ctx, params string[] args)
     {
         Console.WriteLine("quote invoked with args:");
-        if (args is null)
-        {
-            args = "";
-        }
-        var cmdargs = args.Split(" ");
-        foreach (var item in cmdargs)
+
+        foreach (var item in args)
         {
             Console.Write($" {item} ");
         }
         Console.WriteLine();
         // are we asking for a certain quote or a subcommand?
-        if (int.TryParse(cmdargs[0], out int id))
+        if (int.TryParse(args[0], out int id))
         {
             Console.WriteLine("quoting by number");
             DiscordEmbed quote = await QuoteEmbed(id);
@@ -51,11 +46,11 @@ public class QuoteCommands : BaseCommandModule
         } 
         else
         {
-            _ = cmdargs[0] switch
+            _ = args[0] switch
             {
                 "" => HandleRandom(ctx),
-                "stats" => HandleStats(ctx, cmdargs[1]),
-                "remove" or "delete" => HandleDelete(ctx, cmdargs[1]),
+                "stats" => HandleStats(ctx, args[1]),
+                "remove" or "delete" => HandleDelete(ctx, args[1]),
                 "latest" => HandleLatest(ctx),
                 string s => HandleUsernameOrInvalid(ctx, s)
 
@@ -66,7 +61,7 @@ public class QuoteCommands : BaseCommandModule
 
 #region Subcommand Handlers
 
-    private async Task<bool> HandleRandom(CommandContext ctx)
+    private static async Task<bool> HandleRandom(CommandContext ctx)
     {
         Console.WriteLine("random quote");
         DiscordEmbed embed = await RandomQuote();
@@ -77,7 +72,7 @@ public class QuoteCommands : BaseCommandModule
         return true;
     }
 
-    private async Task<bool> HandleStats(CommandContext ctx, string user = "")
+    private static async Task<bool> HandleStats(CommandContext ctx, string user = "")
     {
         Console.WriteLine("quoting stats");
         DiscordEmbed stats = await QuoteStats();
@@ -85,7 +80,7 @@ public class QuoteCommands : BaseCommandModule
         return true;
     }
 
-    private async Task<bool> HandleDelete(CommandContext ctx, string target)
+    private static async Task<bool> HandleDelete(CommandContext ctx, string target)
     {
         if (long.TryParse(target, out long quoteToRemove))
         {
@@ -94,15 +89,22 @@ public class QuoteCommands : BaseCommandModule
                 Console.WriteLine($"deleting quote {quoteToRemove}");
                 // need to remove our reaction
                 var message = await ctx.Channel.GetMessageAsync(Program.GetQuotes().Find(q => q.id == quoteToRemove).messageId);
-                var user = await ctx.Guild.GetMemberAsync(1503994723118088292);
-                // get reaction
-                if (message.Reactions.Any(r => r.Emoji.GetDiscordName() == Program.settings.reactName))
+                if (ctx.Guild is not null)
                 {
-                    await message.DeleteReactionAsync(message.Reactions.First(r => r.Emoji.GetDiscordName() == Program.settings.reactName).Emoji, user);
+                    var user = await ctx.Guild.GetMemberAsync(1503994723118088292);
+                    // get reaction
+                    if (message.Reactions.Any(r => r.Emoji.GetDiscordName() == Program.settings.reactName))
+                    {
+                        await message.DeleteReactionAsync(message.Reactions.First(r => r.Emoji.GetDiscordName() == Program.settings.reactName).Emoji, user);
+                    }
+                    Program.RemoveQuote(quoteToRemove);
+                    
+                    await ctx.Channel.SendMessageAsync($"Quote {quoteToRemove} removed!");
                 }
-                Program.RemoveQuote(quoteToRemove);
-                
-                await ctx.Channel.SendMessageAsync($"Quote {quoteToRemove} removed!");
+                else
+                {
+                    await ctx.Channel.SendMessageAsync("Unknown server");
+                }
             }
             else
             {
@@ -112,7 +114,7 @@ public class QuoteCommands : BaseCommandModule
         return true;
     }
 
-    private async Task<bool> HandleLatest(CommandContext ctx)
+    private static async Task<bool> HandleLatest(CommandContext ctx)
     {
         DiscordEmbed latestEmbed = await QuoteEmbed(Program.maxQuoteId);
         await ctx.Channel.SendMessageAsync(latestEmbed);
@@ -126,12 +128,20 @@ public class QuoteCommands : BaseCommandModule
         ulong targetUserId = 0;
         try
         {
-            targetUserId = ctx.Guild.Members.First(m => 
-                m.Value.DisplayName.ToLowerInvariant().Equals(arg) || 
-                m.Value.Username.ToLowerInvariant().Equals(arg) ||
-                (m.Value.GlobalName?.ToLowerInvariant().Equals(arg) ?? false) ||
-                (m.Value.Nickname?.ToLowerInvariant().Equals(arg) ?? false)
-            ).Key;
+            if (ctx.Guild is not null)
+            {
+                targetUserId = ctx.Guild.Members.First(m => 
+                    m.Value.DisplayName.ToLowerInvariant().Equals(arg) || 
+                    m.Value.Username.ToLowerInvariant().Equals(arg) ||
+                    (m.Value.GlobalName?.ToLowerInvariant().Equals(arg) ?? false) ||
+                    (m.Value.Nickname?.ToLowerInvariant().Equals(arg) ?? false)
+                ).Key;
+            }
+            else
+            {
+                await ctx.Channel.SendMessageAsync("Server not found");
+                return false;
+            }
         }
         catch (InvalidOperationException ioe)
         {

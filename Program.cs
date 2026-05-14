@@ -1,6 +1,8 @@
 ﻿using System.Text.Json;
 using DSharpPlus;
-using DSharpPlus.CommandsNext;
+using DSharpPlus.Commands;
+using DSharpPlus.Commands.Processors.TextCommands;
+using DSharpPlus.Commands.Processors.TextCommands.Parsing;
 using DSharpPlus.Entities;
 
 namespace Aeoquotes;
@@ -80,13 +82,19 @@ internal class Program
                 }
             });
         });
-        builder = builder.UseCommandsNext((cnb) =>
+        builder = builder.UseCommands(
+            (IServiceProvider serviceProvider, CommandsExtension extension) =>
             {
-                cnb.RegisterCommands<QuoteCommands>();
-            }, 
-            new CommandsNextConfiguration()
+                extension.AddCommands([typeof(QuoteCommands)]);
+                TextCommandProcessor textCommandProcessor = new(new()
+                {
+                    PrefixResolver = new DefaultPrefixResolver(true, ["!"]).ResolvePrefixAsync
+                });
+                extension.AddProcessor(textCommandProcessor);
+            }, new CommandsConfiguration()
             {
-                StringPrefixes = ["!"]
+                RegisterDefaultCommandProcessors = true,
+                DebugGuildId = 0
             }
         );
 
