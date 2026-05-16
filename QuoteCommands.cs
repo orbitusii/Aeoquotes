@@ -57,7 +57,7 @@ public class QuoteCommands : BaseCommandModule
                 "stats" => HandleStats(ctx),
                 "remove" or "delete" => HandleDelete(ctx, cmdargs[1]),
                 "latest" => HandleLatest(ctx),
-                string s => HandleUsernameOrInvalid(ctx, s)
+                string s => HandleUsernameOrInvalid(ctx, args)
 
             };
         }
@@ -136,7 +136,7 @@ public class QuoteCommands : BaseCommandModule
             await ctx.Channel.SendMessageAsync("User not found");
             return false;
         }
-        catch (NameScenarioInvalidException nsi)
+        catch (NameScenarioInvalidException nsi) // handle cases where we dont get a single valid user out
         {
             Console.WriteLine(nsi.Message);
             Console.WriteLine(nsi.StackTrace);
@@ -168,24 +168,34 @@ public class QuoteCommands : BaseCommandModule
     {
         // check nickname, then display name, then username
         // 3 case: nobody with this nickname, one person with this nickname, multiple people with this nickname
-        ulong? targetUserId = Program.Members.Count(m => m.Nickname.Equals(name)) switch
+        ulong? targetUserId = Program.Members.Count(m => (m.Nickname ?? "").ToLowerInvariant().Equals(name)) switch
             {
                 <0 => throw new NameScenarioInvalidException("A negative number of users have this nickname!", NameScenario.NegativeCount, NameType.Nickname),
-                1 => Program.Members.Find(m => m.Nickname.Equals(name))?.Id,
-                >1 or 0 => Program.Members.Count(m => m.DisplayName.Equals(name)) switch
+                1 => Program.Members.Find(m => (m.Nickname ?? "").ToLowerInvariant().Equals(name))?.Id,
+                >1 or 0 => Program.Members.Count(m => m.DisplayName.ToLowerInvariant().Equals(name)) switch
                 {
                     <0 => throw new NameScenarioInvalidException("A negative number of users have this display name!", NameScenario.NegativeCount, NameType.DisplayName),
-                    1 => Program.Members.Find(m => m.DisplayName.Equals(name))?.Id,
-                    >1 or 0 => Program.Members.Count(m => m.Username.Equals(name)) switch
+                    1 => Program.Members.Find(m => m.DisplayName.ToLowerInvariant().Equals(name))?.Id,
+                    >1 or 0 => Program.Members.Count(m => m.Username.ToLowerInvariant().Equals(name)) switch
                     {
                         <0 => throw new NameScenarioInvalidException("A negative number of users have this username!", NameScenario.NegativeCount, NameType.Username),
-                        0 => Program.GetQuotes().Find(q => q.nick.ToLowerInvariant().Equals(name)).userId,
-                        1 => Program.Members.Find(m => m.Username.Equals(name))?.Id,
+                        0 => TryGetUserIdFromQuoteList(name), // no users with this username in the server, so loook through quoes list in case they left
+                        1 => Program.Members.Find(m => m.Username.ToLowerInvariant().Equals(name))?.Id,
                         >1 => throw new NameScenarioInvalidException("Multiple number users have this username!", NameScenario.MultipleUsers, NameType.Username)
                     }
                 }
             };
         return targetUserId;
+    }
+
+    private ulong? TryGetUserIdFromQuoteList(string username)
+    {
+        // look through quotes to see if any attached nicknames match our target username
+        bool quotesHaveName = Program.GetQuotes().Any(q => q.nick.ToLowerInvariant().Equals(username));
+        if (quotesHaveName)
+        {
+            return Program.GetQuotes().Find(q => q.nick.ToLowerInvariant().Equals(username)).userId;
+        } else throw new NameScenarioInvalidException("No record of this user found in the quote db", NameScenario.ZeroCount, NameType.Nickname);
     }
 #endregion
 
