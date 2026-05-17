@@ -7,6 +7,7 @@ namespace Aeoquotes;
 
 public class QuoteCommands : BaseCommandModule
 {
+    private static readonly ulong AEOTS_SERVER_ID = 1503994723118088292;
     #region Command Tasks
     // [Command("help")]
     // public async Task Help(CommandContext ctx)
@@ -94,7 +95,7 @@ public class QuoteCommands : BaseCommandModule
                 Console.WriteLine($"deleting quote {quoteToRemove}");
                 // need to remove our reaction
                 var message = await ctx.Channel.GetMessageAsync(Program.GetQuotes().Find(q => q.id == quoteToRemove).messageId);
-                var user = await ctx.Guild.GetMemberAsync(1503994723118088292);
+                var user = await ctx.Guild.GetMemberAsync(AEOTS_SERVER_ID);
                 // get reaction
                 if (message.Reactions.Any(r => r.Emoji.GetDiscordName() == Program.settings.reactName))
                 {
