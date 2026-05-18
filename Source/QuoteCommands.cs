@@ -226,15 +226,15 @@ public class QuoteCommands : BaseCommandModule
     {
         if (id > 0 && id <= Program.maxQuoteId)
         {
-            Quote quote = Program.GetQuotes().Find(q => q.id == id);
+            Quote? quote = Program.GetQuotes().Find(q => q.id == id);
             DiscordEmbedBuilder embedBuilder = new();
             StringBuilder listBuilder = new();
-            embedBuilder.Title = $"#{quote.id}";
+            embedBuilder.Title = $"#{quote?.id}";
             StringBuilder descBuilder = new();
-            descBuilder.Append(quote.text + "\n");
-            descBuilder.Append($"* <@{quote.userId}> [(Jump)](https://discordapp.com/channels/{quote.server}/{quote.channelId}/{quote.messageId})");
+            descBuilder.Append(quote?.text + "\n");
+            descBuilder.Append($"* <@{quote?.userId}> [(Jump)](https://discordapp.com/channels/{quote?.server}/{quote?.channelId}/{quote?.messageId})");
             embedBuilder.Description = descBuilder.ToString();
-            embedBuilder.WithTimestamp(quote.dateTime.ToUniversalTime());
+            embedBuilder.WithTimestamp(quote?.dateTime.ToUniversalTime());
             return embedBuilder.Build();
         }
         else
