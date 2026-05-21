@@ -4,6 +4,7 @@ using System.Text.Json;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace Aeoquotes;
 
@@ -17,8 +18,13 @@ internal class Program
     public static List<DiscordMember> Members {get; private set;} = [];
     public static List<Quote> GetQuotes() => quotes;
 
+    public static ILogger? Logger { get; private set; }
+
     private static async Task Main(string[] args)
     {
+        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
+        
+
         using (QuotesContext migratordb = new())
         {
             //Migrator.OldJsonToEF(@$"{GetProjectRoot()}/quotes.json", migratordb);
