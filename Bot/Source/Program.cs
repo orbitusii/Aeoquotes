@@ -1,6 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Text.Json;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
@@ -22,6 +21,11 @@ internal class Program
 
     private static async Task Main(string[] args)
     {
+        // generate dashoard id token and start the dashboard using it
+        string dashToken = Guid.NewGuid().ToString("N");
+        Process.Start(new ProcessStartInfo("Dashboard.exe", $"--token {dashToken}"));
+        var api = new APIServer(args, dashToken);
+
         using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
         
 
