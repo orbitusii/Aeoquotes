@@ -201,7 +201,7 @@ public class QuoteCommands : BaseCommandModule
         bool quotesHaveName = Program.GetQuotes().Any(q => q.nick.ToLowerInvariant().Equals(username));
         if (quotesHaveName)
         {
-            return Program.GetQuotes().Find(q => q.nick.ToLowerInvariant().Equals(username)).userId;
+            return Program.GetQuotes().Find(q => q.nick.ToLowerInvariant().Equals(username))?.userId;
         } else throw new NameScenarioInvalidException("No record of this user found in the quote db", NameScenario.ZeroCount, NameType.Nickname);
     }
 #endregion
