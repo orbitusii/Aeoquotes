@@ -4,13 +4,13 @@ using System.Text.Json;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace Aeoquotes;
 
 internal class Program
 {
-    static readonly string token = File.ReadAllLines($"{GetProjectRoot()}/token.txt")[0];
     static List<Quote> quotes = [];
     public static long maxQuoteId = 0;
     public static QuotesContext? Database {get; private set;}
@@ -24,6 +24,9 @@ internal class Program
     {
         using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
         
+        var config = new ConfigurationBuilder()
+            .AddUserSecrets<Program>()
+            .Build();
 
         using (QuotesContext migratordb = new())
         {
@@ -37,7 +40,7 @@ internal class Program
         maxQuoteId = quotes.Max(q => q.id);;
         Console.WriteLine($"Loaded {db.Quotes.Count()} quotes successfully");
         
-        DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(token, DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
+        DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(config["ProductionToken"] ?? "", DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
         builder.ConfigureEventHandlers((handler) =>
         {
             handler.HandleMessageReactionAdded(async (client, args) =>
