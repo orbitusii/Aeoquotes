@@ -1,9 +1,11 @@
 using System.Text.Json;
+using log4net;
 
 namespace Aeoquotes;
 
 public static class Migrator
 {
+    private static readonly ILog Logger = LogManager.GetLogger(typeof(Migrator));
     public static void OldJsonToEF(string jsonPath, QuotesContext dbContext)
     {
         if (!dbContext.Quotes.Any() && File.Exists(jsonPath))
@@ -11,11 +13,11 @@ public static class Migrator
             dbContext.Database.EnsureDeleted();
             
             bool created = dbContext.Database.EnsureCreated();
-            Logging.Log($"Database EnsureCreated returned: {created}");
+            Logger.Debug($"Database EnsureCreated returned: {created}");
 
             if (!File.Exists(jsonPath))
             {
-                Logging.Log($"Error: Could not find the source JSON file at: {jsonPath}");
+                Logger.Error($"Error: Could not find the source JSON file at: {jsonPath}");
                 return;
             }
 
@@ -24,16 +26,16 @@ public static class Migrator
 
             if (items == null || items.Count == 0)
             {
-                Logging.Log("Error: JSON was parsed but returned 0 items. Check your JSON structure or class property names.");
+                Logger.Error("Error: JSON was parsed but returned 0 items. Check your JSON structure or class property names.");
                 return;
             }
 
-            Logging.Log($"Found {items.Count} items in JSON. Adding to database...");
+            Logger.Info($"Found {items.Count} items in JSON. Adding to database...");
 
             dbContext.Quotes.AddRange(items);
             
             int rowsWritten = dbContext.SaveChanges();
-            Logging.Log($"Migration complete! Saved {rowsWritten} rows to the database.");
+            Logger.Info($"Migration complete! Saved {rowsWritten} rows to the database.");
         }
     }
 }

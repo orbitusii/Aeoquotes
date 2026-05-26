@@ -2,12 +2,14 @@ using System.Text;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
+using log4net;
 
 namespace Aeoquotes;
 
 public class QuoteCommands : BaseCommandModule
 {
     private static readonly ulong AEOTS_SERVER_ID = 1503994723118088292;
+    private static readonly ILog Logger = LogManager.GetLogger(typeof(QuoteCommands));
     #region Command Tasks
     // [Command("help")]
     // public async Task Help(CommandContext ctx)
@@ -25,28 +27,25 @@ public class QuoteCommands : BaseCommandModule
     [Command("q")]
     public async Task Q(CommandContext ctx, [RemainingText] string args)
     {
-        Logging.Log("q invoked");
+        Logger.Debug("q invoked");
         await Quote(ctx, args);
     }
 
     [Command("quote")]
     public async Task Quote(CommandContext ctx, [RemainingText] string args)
     {
-        Logging.Log("quote invoked with args:");
-        if (args is null)
-        {
-            args = "";
-        }
+        StringBuilder argsB = new();
+        args ??= "";
         var cmdargs = args.Split(" ");
         foreach (var item in cmdargs)
         {
-            Console.Write($" {item} ");
+            argsB.Append($" {item} ");
         }
-        Logging.Log();
+        Logger.Info($"Command `quote` invoked with args: {argsB}");
         // are we asking for a certain quote or a subcommand?
         if (int.TryParse(cmdargs[0], out int id))
         {
-            Logging.Log("quoting by number");
+            Logger.Info($"quoting by number: {id}");
             DiscordEmbed quote = await QuoteEmbed(id);
             await ctx.Channel.SendMessageAsync(quote);
         } 
@@ -55,7 +54,7 @@ public class QuoteCommands : BaseCommandModule
             _ = cmdargs[0] switch
             {
                 "" => HandleRandom(ctx),
-                "stats" => HandleStats(ctx),
+                "stats" => HandleStats(ctx, null),
                 "remove" or "delete" => HandleDelete(ctx, cmdargs[1]),
                 "latest" => HandleLatest(ctx),
                 string s => HandleUsernameOrInvalid(ctx, args)
@@ -69,7 +68,7 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleRandom(CommandContext ctx)
     {
-        Logging.Log("random quote");
+        Logger.Info("random quote");
         DiscordEmbed embed = await RandomQuote();
         if (embed.Title is not null)
         {
@@ -78,9 +77,9 @@ public class QuoteCommands : BaseCommandModule
         return true;
     }
 
-    private async Task<bool> HandleStats(CommandContext ctx, string user = "")
+    private async Task<bool> HandleStats(CommandContext ctx, string? user)
     {
-        Logging.Log($"quoting stats: user={user}");
+        Logger.Info($"quoting stats: user={user ?? "all"}");
         DiscordEmbed stats = await QuoteStats();
         await ctx.Channel.SendMessageAsync(stats);
         return true;
@@ -92,7 +91,7 @@ public class QuoteCommands : BaseCommandModule
         {
             if (Program.GetQuotes().Count <= quoteToRemove && quoteToRemove > 0)
             {
-                Logging.Log($"deleting quote {quoteToRemove}");
+                Logger.Info($"deleting quote {quoteToRemove}");
                 // need to remove our reaction
                 Quote? quote = Program.GetQuotes().Find(q => q.id == quoteToRemove);
                 if (quote is null)
@@ -128,7 +127,7 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleUsernameOrInvalid(CommandContext ctx, string arg)
     {
-        Logging.Log("quoting by username");
+        Logger.Info($"quoting by username {arg}");
         var name = arg.ToLowerInvariant();
 
         ulong? targetUserId = 0;
@@ -138,15 +137,15 @@ public class QuoteCommands : BaseCommandModule
         }
         catch (InvalidOperationException ioe)
         {
-            Logging.Log(ioe.Message);
-            Logging.Log(ioe.StackTrace ?? "InvalidOperationException StackTrace Null");
+            Logger.Error(ioe.Message);
+            Logger.Error(ioe.StackTrace ?? "InvalidOperationException StackTrace Null");
             await ctx.Channel.SendMessageAsync("User not found");
             return false;
         }
         catch (NameScenarioInvalidException nsi) // handle cases where we dont get a single valid user out
         {
-            Logging.Log(nsi.Message);
-            Logging.Log(nsi.StackTrace ?? "NameScenarioInvalidException StackTrace Null");
+            Logger.Error(nsi.Message);
+            Logger.Error(nsi.StackTrace ?? "NameScenarioInvalidException StackTrace Null");
             await ctx.Channel.SendMessageAsync("User not found");
             return false;
         }
@@ -154,7 +153,7 @@ public class QuoteCommands : BaseCommandModule
         if (targetUserId is not null)
         {
             long quoteId = await UsernameQuote(targetUserId.Value);
-            Logging.Log($"Quote {quoteId} selected");
+            Logger.Info($"Quote {quoteId} selected");
             DiscordEmbed usernameQuote = await QuoteEmbed(quoteId);
             if (usernameQuote.Title is not null)
             {
@@ -164,7 +163,7 @@ public class QuoteCommands : BaseCommandModule
         } 
         else
         {
-            Logging.Log("User Not Found (targetUserId is null)");
+            Logger.Error("User Not Found (targetUserId is null)");
             await ctx.Channel.SendMessageAsync("User not found!");
             return false;
         }

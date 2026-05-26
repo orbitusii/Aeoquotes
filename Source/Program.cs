@@ -4,9 +4,9 @@ using System.Text.Json;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using log4net;
+using log4net.Config;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-
 namespace Aeoquotes;
 
 internal class Program
@@ -18,12 +18,11 @@ internal class Program
     public static List<DiscordMember> Members {get; private set;} = [];
     public static List<Quote> GetQuotes() => quotes;
 
-    public static ILogger? Logger { get; private set; }
+    public static readonly ILog Logger = LogManager.GetLogger(typeof(Program));
 
     private static async Task Main(string[] args)
     {
-        using ILoggerFactory factory = LoggerFactory.Create(builder => builder.AddConsole());
-        
+        XmlConfigurator.Configure(new FileInfo($"{GetProjectRoot()}/log4netconfig.xml"));        
         var config = new ConfigurationBuilder()
             .AddUserSecrets<Program>()
             .Build();
@@ -35,17 +34,17 @@ internal class Program
         
         using QuotesContext db = new();
         Database = db;
-        Logging.Log($"Database connected: {db.Quotes.Any()}");
+        Logger.Info($"Database connected: {db.Quotes.Any()}");
         quotes = [.. db.Quotes];
         maxQuoteId = quotes.Max(q => q.id);;
-        Logging.Log($"Loaded {db.Quotes.Count()} quotes successfully");
+        Logger.Info($"Loaded {db.Quotes.Count()} quotes successfully");
         
         DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(config["ProductionToken"] ?? "", DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
         builder.ConfigureEventHandlers((handler) =>
         {
             handler.HandleMessageReactionAdded(async (client, args) =>
             {
-                Logging.Log($"Reaction Added: {args.Emoji.GetDiscordName()}");
+                Logger.Info($"Reaction Added: {args.Emoji.GetDiscordName()}");
                 if (args.Message.Reactions.Any(react => react.Emoji.GetDiscordName().Equals(emojiName)))
                 {
                     if (!quotes.Any(q => q.messageId == args.Message.Id)) // if the subset of the quotes list where the message id matches this message is empty, we havent quoted it yet
@@ -72,7 +71,7 @@ internal class Program
                             quotes.Add(newQuote);
                             db.Add(newQuote);
                             int newQuotes = db.SaveChanges();
-                            Logging.Log($"{newQuotes} quotes saved");
+                            Logger.Info($"{newQuotes} quotes saved");
                             if (newQuotes is 1)
                             {
                                 maxQuoteId++;
@@ -90,7 +89,7 @@ internal class Program
                         }
                         else
                         {
-                            Logging.Log("Author is null!");
+                            Logger.Warn("Author is null!");
                         }
 
                     }
@@ -114,7 +113,7 @@ internal class Program
 
         DiscordClient discord = builder.Build();
         await discord.ConnectAsync();
-        Logging.Log("Connected!");
+        Logger.Info("Connected!");
         var aots = await discord.GetGuildAsync(933937980224196608);
         //SaveData(await FixupData(quotes, aots), "uotes.json");
         var members = aots.GetAllMembersAsync();
