@@ -11,11 +11,11 @@ public static class Migrator
             dbContext.Database.EnsureDeleted();
             
             bool created = dbContext.Database.EnsureCreated();
-            Console.WriteLine($"Database EnsureCreated returned: {created}");
+            Logging.Log($"Database EnsureCreated returned: {created}");
 
             if (!File.Exists(jsonPath))
             {
-                Console.WriteLine($"Error: Could not find the source JSON file at: {jsonPath}");
+                Logging.Log($"Error: Could not find the source JSON file at: {jsonPath}");
                 return;
             }
 
@@ -24,16 +24,16 @@ public static class Migrator
 
             if (items == null || items.Count == 0)
             {
-                Console.WriteLine("Error: JSON was parsed but returned 0 items. Check your JSON structure or class property names.");
+                Logging.Log("Error: JSON was parsed but returned 0 items. Check your JSON structure or class property names.");
                 return;
             }
 
-            Console.WriteLine($"Found {items.Count} items in JSON. Adding to database...");
+            Logging.Log($"Found {items.Count} items in JSON. Adding to database...");
 
             dbContext.Quotes.AddRange(items);
             
             int rowsWritten = dbContext.SaveChanges();
-            Console.WriteLine($"Migration complete! Saved {rowsWritten} rows to the database.");
+            Logging.Log($"Migration complete! Saved {rowsWritten} rows to the database.");
         }
     }
 }

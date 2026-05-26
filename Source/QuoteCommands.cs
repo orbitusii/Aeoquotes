@@ -25,14 +25,14 @@ public class QuoteCommands : BaseCommandModule
     [Command("q")]
     public async Task Q(CommandContext ctx, [RemainingText] string args)
     {
-        Console.WriteLine("q invoked");
+        Logging.Log("q invoked");
         await Quote(ctx, args);
     }
 
     [Command("quote")]
     public async Task Quote(CommandContext ctx, [RemainingText] string args)
     {
-        Console.WriteLine("quote invoked with args:");
+        Logging.Log("quote invoked with args:");
         if (args is null)
         {
             args = "";
@@ -42,11 +42,11 @@ public class QuoteCommands : BaseCommandModule
         {
             Console.Write($" {item} ");
         }
-        Console.WriteLine();
+        Logging.Log();
         // are we asking for a certain quote or a subcommand?
         if (int.TryParse(cmdargs[0], out int id))
         {
-            Console.WriteLine("quoting by number");
+            Logging.Log("quoting by number");
             DiscordEmbed quote = await QuoteEmbed(id);
             await ctx.Channel.SendMessageAsync(quote);
         } 
@@ -69,7 +69,7 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleRandom(CommandContext ctx)
     {
-        Console.WriteLine("random quote");
+        Logging.Log("random quote");
         DiscordEmbed embed = await RandomQuote();
         if (embed.Title is not null)
         {
@@ -80,7 +80,7 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleStats(CommandContext ctx, string user = "")
     {
-        Console.WriteLine($"quoting stats: user={user}");
+        Logging.Log($"quoting stats: user={user}");
         DiscordEmbed stats = await QuoteStats();
         await ctx.Channel.SendMessageAsync(stats);
         return true;
@@ -92,7 +92,7 @@ public class QuoteCommands : BaseCommandModule
         {
             if (Program.GetQuotes().Count <= quoteToRemove && quoteToRemove > 0)
             {
-                Console.WriteLine($"deleting quote {quoteToRemove}");
+                Logging.Log($"deleting quote {quoteToRemove}");
                 // need to remove our reaction
                 Quote? quote = Program.GetQuotes().Find(q => q.id == quoteToRemove);
                 if (quote is null)
@@ -128,7 +128,7 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleUsernameOrInvalid(CommandContext ctx, string arg)
     {
-        Console.WriteLine("quoting by username");
+        Logging.Log("quoting by username");
         var name = arg.ToLowerInvariant();
 
         ulong? targetUserId = 0;
@@ -138,15 +138,15 @@ public class QuoteCommands : BaseCommandModule
         }
         catch (InvalidOperationException ioe)
         {
-            Console.WriteLine(ioe.Message);
-            Console.WriteLine(ioe.StackTrace);
+            Logging.Log(ioe.Message);
+            Logging.Log(ioe.StackTrace ?? "InvalidOperationException StackTrace Null");
             await ctx.Channel.SendMessageAsync("User not found");
             return false;
         }
         catch (NameScenarioInvalidException nsi) // handle cases where we dont get a single valid user out
         {
-            Console.WriteLine(nsi.Message);
-            Console.WriteLine(nsi.StackTrace);
+            Logging.Log(nsi.Message);
+            Logging.Log(nsi.StackTrace ?? "NameScenarioInvalidException StackTrace Null");
             await ctx.Channel.SendMessageAsync("User not found");
             return false;
         }
@@ -154,7 +154,7 @@ public class QuoteCommands : BaseCommandModule
         if (targetUserId is not null)
         {
             long quoteId = await UsernameQuote(targetUserId.Value);
-            Console.WriteLine(quoteId);
+            Logging.Log($"Quote {quoteId} selected");
             DiscordEmbed usernameQuote = await QuoteEmbed(quoteId);
             if (usernameQuote.Title is not null)
             {
@@ -164,7 +164,7 @@ public class QuoteCommands : BaseCommandModule
         } 
         else
         {
-            Console.WriteLine("User Not Found (targetUserId is null)");
+            Logging.Log("User Not Found (targetUserId is null)");
             await ctx.Channel.SendMessageAsync("User not found!");
             return false;
         }

@@ -35,17 +35,17 @@ internal class Program
         
         using QuotesContext db = new();
         Database = db;
-        Console.WriteLine($"Database connected: {db.Quotes.Any()}");
+        Logging.Log($"Database connected: {db.Quotes.Any()}");
         quotes = [.. db.Quotes];
         maxQuoteId = quotes.Max(q => q.id);;
-        Console.WriteLine($"Loaded {db.Quotes.Count()} quotes successfully");
+        Logging.Log($"Loaded {db.Quotes.Count()} quotes successfully");
         
         DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(config["ProductionToken"] ?? "", DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
         builder.ConfigureEventHandlers((handler) =>
         {
             handler.HandleMessageReactionAdded(async (client, args) =>
             {
-                Console.WriteLine($"Reaction Added: {args.Emoji.GetDiscordName()}");
+                Logging.Log($"Reaction Added: {args.Emoji.GetDiscordName()}");
                 if (args.Message.Reactions.Any(react => react.Emoji.GetDiscordName().Equals(emojiName)))
                 {
                     if (!quotes.Any(q => q.messageId == args.Message.Id)) // if the subset of the quotes list where the message id matches this message is empty, we havent quoted it yet
@@ -72,7 +72,7 @@ internal class Program
                             quotes.Add(newQuote);
                             db.Add(newQuote);
                             int newQuotes = db.SaveChanges();
-                            Console.WriteLine(newQuotes);
+                            Logging.Log($"{newQuotes} quotes saved");
                             if (newQuotes is 1)
                             {
                                 maxQuoteId++;
@@ -90,7 +90,7 @@ internal class Program
                         }
                         else
                         {
-                            Console.WriteLine("Author is null!");
+                            Logging.Log("Author is null!");
                         }
 
                     }
@@ -114,7 +114,7 @@ internal class Program
 
         DiscordClient discord = builder.Build();
         await discord.ConnectAsync();
-        Console.WriteLine("Connected!");
+        Logging.Log("Connected!");
         var aots = await discord.GetGuildAsync(933937980224196608);
         //SaveData(await FixupData(quotes, aots), "uotes.json");
         var members = aots.GetAllMembersAsync();
