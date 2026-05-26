@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
@@ -22,6 +23,7 @@ internal class Program
 
     private static async Task Main(string[] args)
     {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         XmlConfigurator.Configure(new FileInfo($"{GetProjectRoot()}/log4netconfig.xml"));        
         var config = new ConfigurationBuilder()
             .AddUserSecrets<Program>()
