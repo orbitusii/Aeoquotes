@@ -68,7 +68,6 @@ public class QuoteCommands : BaseCommandModule
 
     private async Task<bool> HandleRandom(CommandContext ctx)
     {
-        Logger.Info("random quote");
         DiscordEmbed embed = await RandomQuote();
         if (embed.Title is not null)
         {
@@ -240,7 +239,7 @@ public class QuoteCommands : BaseCommandModule
         {
             return new DiscordEmbedBuilder()
             {
-                Title = "Quote not found!"
+                Title = $"{id} is not in the valid quote id range!"
             }.Build();
         }
     }
@@ -268,9 +267,16 @@ public class QuoteCommands : BaseCommandModule
     {
         Random rng = new(DateTime.Now.Microsecond);
         var quotes = Program.GetQuotes();
+        var ids = quotes.Select(q => q.id);
+        var tries = 0;
         if (quotes.Count > 0)
         {
-            long id = rng.NextInt64(quotes.Max(q => q.id) + 1);
+            long id;
+            do {
+                id = rng.NextInt64(quotes.Max(q => q.id) + 1);
+                tries++;
+            } while (!ids.Contains(id));
+            Logger.Info($"Random quote selected. Id={id}. {tries} tries needed.");
             return await QuoteEmbed(id);
         }
         return await QuoteEmbed(-1);
