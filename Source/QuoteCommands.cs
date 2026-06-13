@@ -42,7 +42,7 @@ public class QuoteCommands : BaseCommandModule
             _ = cmdargs[0] switch
             {
                 "" => HandleRandom(ctx),
-                "stats" => HandleStats(ctx, cmdargs[1]),
+                "stats" => HandleStats(ctx, cmdargs.Length >= 2 ? cmdargs[1] : null),
                 "remove" or "delete" => HandleDelete(ctx, cmdargs[1]),
                 "latest" => HandleLatest(ctx),
                 string s => HandleUsernameOrInvalid(ctx, args)
@@ -72,7 +72,7 @@ public class QuoteCommands : BaseCommandModule
         if (leaderboardLength is null)
         {
             Logger.Info($"Generating leaderboard, length=25");
-            stats = await QuoteLeaderboard();
+            stats = await QuoteLeaderboard(leaderboardLength);
         } 
         else
         {
@@ -205,10 +205,10 @@ public class QuoteCommands : BaseCommandModule
 #endregion
 
 #region Embed/Response Generators
-    static async Task<DiscordEmbed> QuoteLeaderboard(int leaderboardLength = 25)
+    static async Task<DiscordEmbed> QuoteLeaderboard(int? leaderboardLength)
     {
         var quotes = Program.GetQuotes();
-        var topQuotes = quotes.CountBy(q => q.userId).OrderByDescending(kvp => kvp.Value).Take(leaderboardLength).ToList();
+        var topQuotes = quotes.CountBy(q => q.userId).OrderByDescending(kvp => kvp.Value).Take(leaderboardLength ?? 25).ToList();
         DiscordEmbedBuilder embedBuilder = new DiscordEmbedBuilder();
         StringBuilder listBuilder = new();
         for (int i = 0; i < topQuotes.Count; i++)
