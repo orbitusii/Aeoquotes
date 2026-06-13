@@ -11,18 +11,6 @@ public class QuoteCommands : BaseCommandModule
     private static readonly ulong AEOTS_SERVER_ID = 1503994723118088292;
     private static readonly ILog Logger = LogManager.GetLogger(typeof(QuoteCommands));
     #region Command Tasks
-    // [Command("help")]
-    // public async Task Help(CommandContext ctx)
-    // {
-    //     StringBuilder descBuilder = new StringBuilder();
-    //     DiscordEmbedBuilder builder = new DiscordEmbedBuilder()
-    //     {
-    //         Title = "AEoTS Quote Bot Help",
-    //         Description = "Command listing for the AEoTS quote bot. Note that for all commands, !q and !quote will have the same result."
-    //     };
-    //     builder.AddField("Leaderboard", "`!quote stats`");
-    //     builder.AddField("Getting Quotes", "* Random quote - `!quote`\n* Random quote from a user - `!quote [username]` (Username or display name works!)\n* A specific quote - `!quote [number]`");
-    // }
 
     [Command("q")]
     public async Task Q(CommandContext ctx, [RemainingText] string args)
@@ -54,7 +42,7 @@ public class QuoteCommands : BaseCommandModule
             _ = cmdargs[0] switch
             {
                 "" => HandleRandom(ctx),
-                "stats" => HandleStats(ctx, null),
+                "stats" => HandleStats(ctx, cmdargs[1]),
                 "remove" or "delete" => HandleDelete(ctx, cmdargs[1]),
                 "latest" => HandleLatest(ctx),
                 string s => HandleUsernameOrInvalid(ctx, args)
@@ -76,10 +64,22 @@ public class QuoteCommands : BaseCommandModule
         return true;
     }
 
-    private async Task<bool> HandleStats(CommandContext ctx, string? user)
+    private async Task<bool> HandleStats(CommandContext ctx, string? data)
     {
-        Logger.Info($"quoting stats: user={user ?? "all"}");
-        DiscordEmbed stats = await QuoteStats();
+        DiscordEmbed stats;
+        int? leaderboardLength = int.TryParse(data, out int num) ? num : null;
+        // no number after, user stats or base leaderboard
+        if (leaderboardLength is null)
+        {
+            Logger.Info($"Generating leaderboard, length=25");
+            stats = await QuoteLeaderboard();
+        } 
+        else
+        {
+            Logger.Info($"Generating leaderboard, length={leaderboardLength}");
+            stats = await QuoteLeaderboard(leaderboardLength.Value);
+        }
+
         await ctx.Channel.SendMessageAsync(stats);
         return true;
     }
@@ -186,7 +186,7 @@ public class QuoteCommands : BaseCommandModule
                         <0 => throw new NameScenarioInvalidException("A negative number of users have this username!", NameScenario.NegativeCount, NameType.Username),
                         0 => TryGetUserIdFromQuoteList(name), // no users with this username in the server, so loook through quoes list in case they left
                         1 => Program.Members.Find(m => m.Username.ToLowerInvariant().Equals(name))?.Id,
-                        >1 => throw new NameScenarioInvalidException("Multiple number users have this username!", NameScenario.MultipleUsers, NameType.Username)
+                        >1 => throw new NameScenarioInvalidException("Multiple users have this username!", NameScenario.MultipleUsers, NameType.Username)
                     }
                 }
             };
@@ -205,16 +205,15 @@ public class QuoteCommands : BaseCommandModule
 #endregion
 
 #region Embed/Response Generators
-    static async Task<DiscordEmbed> QuoteStats()
+    static async Task<DiscordEmbed> QuoteLeaderboard(int leaderboardLength = 25)
     {
-        // assemble the top 20
         var quotes = Program.GetQuotes();
-        var top20 = quotes.CountBy(q => q.userId).OrderByDescending(kvp => kvp.Value).Take(20).ToList();
+        var topQuotes = quotes.CountBy(q => q.userId).OrderByDescending(kvp => kvp.Value).Take(leaderboardLength).ToList();
         DiscordEmbedBuilder embedBuilder = new DiscordEmbedBuilder();
         StringBuilder listBuilder = new();
-        for (int i = 0; i < top20.Count; i++)
+        for (int i = 0; i < topQuotes.Count; i++)
         {
-            listBuilder.Append($"{i + 1}. <@{top20[i].Key}> ({top20[i].Value} quotes)\n");
+            listBuilder.Append($"{i + 1}. <@{topQuotes[i].Key}> ({topQuotes[i].Value} quotes)\n");
         }
         embedBuilder.WithDescription(listBuilder.ToString());
         return embedBuilder.Build();
@@ -244,11 +243,11 @@ public class QuoteCommands : BaseCommandModule
         }
     }
 
-    static async Task<long> UsernameQuote(ulong userid)
+    static async Task<long> UsernameQuote(ulong userId)
     {
         // is this a valid name
         // get all quotes by them
-        var quotesByUser = Program.GetQuotes().Where(q => q.userId == userid);
+        var quotesByUser = Program.GetQuotes().Where(q => q.userId == userId);
         if (!quotesByUser.Any())
         {
             return -1;
