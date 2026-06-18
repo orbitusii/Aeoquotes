@@ -46,7 +46,6 @@ internal class Program
         {
             handler.HandleMessageReactionAdded(async (client, args) =>
             {
-                Logger.Info($"Reaction Added: {args.Emoji.GetDiscordName()}");
                 if (args.Message.Reactions.Any(react => react.Emoji.GetDiscordName().Equals(emojiName)))
                 {
                     if (!quotes.Any(q => q.messageId == args.Message.Id)) // if the subset of the quotes list where the message id matches this message is empty, we havent quoted it yet
