@@ -53,7 +53,7 @@ internal class Program
                         // get the message ourselves because a lot of the fields are null
                         DiscordChannel channel = await client.GetChannelAsync(args.Channel.Id);
                         DiscordMessage message = await channel.GetMessageAsync(args.Message.Id);
-                        if (message.Author is not null)
+                        if (message.Author is not null && !message.Author.IsBot)
                         {
                             DiscordMember author = await channel.Guild.GetMemberAsync(message.Author.Id);
                             Quote newQuote = new Quote(
