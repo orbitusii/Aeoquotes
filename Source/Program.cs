@@ -24,10 +24,7 @@ internal class Program
     private static async Task Main(string[] args)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        XmlConfigurator.Configure(new FileInfo($"{GetProjectRoot()}/log4netconfig.xml"));        
-        var config = new ConfigurationBuilder()
-            .AddUserSecrets<Program>()
-            .Build();
+        XmlConfigurator.Configure(new FileInfo($"{GetProjectRoot(false)}/log4netconfig.xml"));        
 
         using (QuotesContext migratordb = new())
         {
@@ -41,7 +38,7 @@ internal class Program
         maxQuoteId = quotes.Max(q => q.id);;
         Logger.Info($"Loaded {db.Quotes.Count()} quotes successfully");
         
-        DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(config["ProductionToken"] ?? "", DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
+        DiscordClientBuilder builder = DiscordClientBuilder.CreateDefault(File.ReadAllText($"{GetProjectRoot(false)}/token.txt"), DiscordIntents.AllUnprivileged | DiscordIntents.MessageContents | DiscordIntents.GuildMembers);
         builder.ConfigureEventHandlers((handler) =>
         {
             handler.HandleMessageReactionAdded(async (client, args) =>
@@ -113,6 +110,7 @@ internal class Program
         );
 
         DiscordClient discord = builder.Build();
+        
         await discord.ConnectAsync();
         Logger.Info("Connected!");
         var aots = await discord.GetGuildAsync(933937980224196608);
@@ -125,23 +123,30 @@ internal class Program
         await Task.Delay(-1);
     }
 
-    public static string GetProjectRoot([CallerFilePath] string callerFilePath = "")
+    public static string GetProjectRoot(bool deployed, [CallerFilePath] string callerFilePath = "")
     {
-        // callerFilePath contains the absolute path to THIS source file on compile time.
-        
-        var directory = Path.GetDirectoryName(callerFilePath);
-        
-        // Traverse up until we find the folder containing the .csproj file
-        while (directory != null)
+        if (!deployed)
         {
-            if (Directory.GetFiles(directory, "*.csproj").Length > 0)
+            // callerFilePath contains the absolute path to THIS source file on compile time.
+        
+            var directory = Path.GetDirectoryName(callerFilePath);
+            
+            // Traverse up until we find the folder containing the .csproj file
+            while (directory != null)
             {
-                return directory;
+                if (Directory.GetFiles(directory, "*.csproj").Length > 0)
+                {
+                    return directory;
+                }
+                directory = Directory.GetParent(directory)?.FullName;
             }
-            directory = Directory.GetParent(directory)?.FullName;
-        }
 
-        throw new DirectoryNotFoundException("Could not find the project root directory containing a .csproj file.");
+            throw new DirectoryNotFoundException("Could not find the project root directory containing a .csproj file.");
+        } 
+        else
+        {
+            return new FileInfo(Assembly.GetExecutingAssembly().Location).Directory.FullName;    
+        }
     }
 
     public static void RemoveQuote(long quoteId)
